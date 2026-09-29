@@ -40,20 +40,3 @@ export interface PhotoRepository {
   get(id: string): Promise<PhotoRecord | null>;
   readVariant(id: string, variant: PhotoVariant): Promise<PhotoFile | null>;
 }
-
-/** Logo pořadatele, uložené už jako bílá silueta (PNG s průhledností). */
-export interface PartnerLogoRecord {
-  id: string;
-  originalName: string;
-  width: number;
-  height: number;
-  createdAt: string;
-}
-
-export interface PartnerLogoRepository {
-  list(): Promise<PartnerLogoRecord[]>;
-  get(id: string): Promise<PartnerLogoRecord | null>;
-  create(file: Buffer, originalName: string): Promise<PartnerLogoRecord>;
-  delete(id: string): Promise<boolean>;
-  read(id: string): Promise<Buffer | null>;
-}

@@ -40,24 +40,29 @@ ok((await fetch(`${BASE}/api/photos/${color.id}?v=full`)).status === 200, 'fotka
 ok((await fetch(`${BASE}/api/photos/..%2F..%2Fpackage.json?v=full`)).status === 404, 'path traversal u fotek → 404');
 ok((await fetch(`${BASE}/api/logos/..%2F..%2Fpackage.json`)).status === 404, 'path traversal u log → 404');
 
-console.log('— loga pořadatele');
+console.log('— loga pořadatele (neukládají se)');
 const [l1s, logo1] = await upload('/api/logos', logoSvg, 'test.svg', 'image/svg+xml');
 const [l2s, logo2] = await upload('/api/logos', logoJpg, 'kruh.jpg', 'image/jpeg');
-ok(l1s === 201 && l2s === 201, 'nahrání SVG i JPG loga');
-const lp = await sharp(Buffer.from(await (await fetch(`${BASE}/api/logos/${logo1.id}`)).arrayBuffer())).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
+ok(l1s === 200 && l2s === 200 && logo1.dataUrl?.startsWith('data:image/png;base64,'), 'převod SVG i JPG loga na PNG');
+const lp = await sharp(Buffer.from(logo1.dataUrl.split(',')[1], 'base64')).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
 let nonWhite = 0; for (let i = 0; i < lp.data.length; i += 4) if (lp.data[i + 3] > 20 && (lp.data[i] < 250 || lp.data[i + 1] < 250 || lp.data[i + 2] < 250)) nonWhite++;
 ok(nonWhite === 0, 'logo převedené na bílou siluetu');
+ok(!('id' in logo1), 'logo nemá id (na serveru se neuložilo)');
+ok((await fetch(BASE + '/api/logos')).status === 405, 'seznam uložených log neexistuje (405)');
+ok((await upload('/api/logos', Buffer.from('ahoj'), 'x.png', 'image/png'))[0] >= 400, 'ne-obrázek jako logo odmítnut');
 
 console.log('— validace exportu');
-const input = { templateId: 'event-classic', photoId: color.id, cityHeadline: 'v Karlových Varech', venue: 'Městské divadlo', date: '2026-11-18', time: '19:00', description: 'Zaznamenali jste u sebe v posledních dnech nutkavou potřebu', partnerLogoIds: [logo1.id, logo2.id] };
+const input = { templateId: 'event-classic', photoId: color.id, cityHeadline: 'v Karlových Varech', venue: 'Městské divadlo', date: '2026-11-18', time: '19:00', description: 'Zaznamenali jste u sebe v posledních dnech nutkavou potřebu' };
+const partnerLogos = [logo1.dataUrl, logo2.dataUrl];
 const bad = async (name, patchIn, extra = {}) => { const r = await post('/api/export', { formatId: 'poster-3x4', fileType: 'png', input: { ...input, ...patchIn }, ...extra }); ok(r.status >= 400 && r.status < 500, name, `HTTP ${r.status}`); };
 await bad('neexistující datum (30. 2.) odmítnuto', { date: '2026-02-30' });
 await bad('neplatný čas (25:99) odmítnut', { time: '25:99' });
 await bad('město přes 23 znaků odmítnuto', { cityHeadline: 'v' + 'x'.repeat(23) });
 await bad('místo přes 27 znaků odmítnuto', { venue: 'x'.repeat(28) });
 await bad('popis přes 3 řádky odmítnut', { description: ['a', 'b', 'c', 'd'].map((c) => c.repeat(20)).join(' ') });
-await bad('3 loga pořadatele odmítnuta', { partnerLogoIds: [logo1.id, logo2.id, logo1.id] });
-await bad('neexistující logo odmítnuto', { partnerLogoIds: ['00000000-0000-0000-0000-000000000000'] });
+ok((await post('/api/export', { formatId: 'poster-3x4', fileType: 'png', input, partnerLogos: [...partnerLogos, logo1.dataUrl] })).status === 400, '3 loga pořadatele odmítnuta');
+ok((await post('/api/export', { formatId: 'poster-3x4', fileType: 'png', input, partnerLogos: ['data:image/png;base64,AAAA'] })).status === 400, 'poškozené logo odmítnuto');
+ok((await post('/api/export', { formatId: 'poster-3x4', fileType: 'png', input, partnerLogos: ['https://example.com/x.png'] })).status === 400, 'logo jako cizí URL odmítnuto');
 await bad('neexistující fotka odmítnuta', { photoId: 'neni' });
 await bad('prázdné místo konání odmítnuto', { venue: '' });
 await bad('neplatný výřez fotky odmítnut', { photoFocus: { x: 2, y: 0 } });
@@ -71,12 +76,12 @@ ok((await post('/api/export', { formatId: 'poster-3x4', fileType: 'pdf', input }
 console.log('— exporty');
 const cases = [['poster-3x4', 'png', [2160, 2880]], ['poster-3x4', 'jpeg', [2160, 2880]], ['a4', 'png', [2480, 3508]], ['a4', 'jpeg', [2480, 3508]], ['a3', 'png', [3508, 4961]], ['a3', 'jpeg', [3508, 4961]]];
 for (const [formatId, fileType, [w, h]] of cases) {
-  const t = Date.now(); const r = await post('/api/export', { formatId, fileType, input });
+  const t = Date.now(); const r = await post('/api/export', { formatId, fileType, input, partnerLogos });
   const buf = Buffer.from(await r.arrayBuffer()); const m = r.status === 200 ? await sharp(buf).metadata() : {};
   ok(r.status === 200 && m.width === w && m.height === h, `${formatId} ${fileType.toUpperCase()}`, `${m.width}×${m.height}, ${(buf.length / 1e6).toFixed(1)} MB, ${((Date.now() - t) / 1000).toFixed(1)} s`);
 }
 for (const [formatId, bleed, sizeMm, trim] of [['a4', false, [210, 297], null], ['a3', false, [297, 420], null], ['a4', true, [228, 315], [210, 297]], ['a3', true, [315, 438], [297, 420]]]) {
-  const t = Date.now(); const r = await post('/api/export', { formatId, fileType: 'pdf', bleed, input });
+  const t = Date.now(); const r = await post('/api/export', { formatId, fileType: 'pdf', bleed, input, partnerLogos });
   const buf = Buffer.from(await r.arrayBuffer());
   if (r.status !== 200) { ok(false, `${formatId} PDF${bleed ? ' pro tiskárnu' : ''}`, `HTTP ${r.status}`); continue; }
   const doc = await PDFDocument.load(buf); const p = doc.getPage(0); const mm = (v) => v * 25.4 / 72;
@@ -94,6 +99,4 @@ const t0 = Date.now();
 const par = await Promise.all(['poster-3x4', 'a4', 'a3', 'poster-3x4'].map((f, i) => post('/api/export', { formatId: f, fileType: i === 2 ? 'pdf' : 'png', input })));
 ok(par.every(r => r.status === 200), '4 exporty najednou', `${((Date.now() - t0) / 1000).toFixed(1)} s`);
 
-console.log('— úklid');
-for (const id of [logo1.id, logo2.id]) ok((await fetch(`${BASE}/api/logos/${id}`, { method: 'DELETE' })).status === 204, `smazání loga ${id.slice(0, 8)}`);
 console.log(`\nVÝSLEDEK API: ${pass} OK, ${fail} chyb`);

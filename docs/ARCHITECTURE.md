@@ -40,21 +40,20 @@ src/
     event-classic/Poster.tsx  renderer v pevných px (volitelně se spadávkou)
     print-sheet.tsx           tiskový arch: bílý okraj + ořezové značky (SVG)
   data/             PORTY + lokální implementace
-    ports.ts          PhotoRepository, PartnerLogoRepository
+    ports.ts          PhotoRepository
     local/photo-catalog.ts             content/photos/ – schválená knihovna jen pro čtení (originály + náhledy)
-    local/partner-logo-repository.ts   storage/logos/ – bílé siluety log pořadatelů
     index.ts          jediné místo, kde se volí implementace
   export/
     render-image.ts   Playwright: /render → PNG/JPEG/PDF + kontroly (font, obrázky, rozměr)
     pdf-boxes.ts      TrimBox/BleedBox do PDF pro tiskárnu (@cantoo/pdf-lib)
+    logo-silhouette.ts  převod loga pořadatele na bílou siluetu (bez ukládání)
   lib/paths.ts      URL assetů (basePath)
   app/
     page.tsx, generator.tsx, photo-library.tsx, partner-logos.tsx, poster-preview.tsx   UI
     render/page.tsx          interní stránka pro export (parametry d, f, w, b, sheet)
-    api/photos, api/photos/[id], api/logos, api/logos/[id], api/export
+    api/photos, api/photos/[id] (jen čtení), api/logos (jen převod), api/export
 public/fonts, public/brand   přibalený font a logo PD
 content/                     schválená knihovna fotek (součást projektu)
-storage/                     nahraná loga pořadatelů (lokálně, mimo git)
 scripts/                     gen-metrics.mjs (metriky fontu), import-photos.mjs (knihovna fotek), audit-api.mjs (test API)
 ```
 
@@ -63,7 +62,7 @@ scripts/                     gen-metrics.mjs (metriky fontu), import-photos.mjs 
 - **Šablona je čistá funkce.** Nefetchuje, nemá stav, nezná úložiště. Dostane `PosterInput` + `Format` + vyřešené URL assetů a vrátí strom prvků o přesné velikosti W×H px.
 - **Šablona používá pevné pixely, ne responzivní CSS.** Všechny rozměry jsou `u × scale`, kde `scale` odvozuje `spec.ts` pro každý formát. Nic v šabloně nezávisí na šířce okna prohlížeče.
 - **Preview** = stejná komponenta vykreslená 1:1 a zmenšená přes `transform: scale()` do rámečku. Layout se tedy počítá vždy v plné velikosti. Mobilní preview je jen jiné `scale`.
-- **Assety přes porty.** Šablona dostane `photoUrl`, ne cestu k souboru. Lokálně vede na `/api/photos/…` (soubory ve `storage/`), v produkci na URL z úložiště. Šablony ani brand se při přechodu nemění.
+- **Assety přes porty.** Šablona dostane `photoUrl`, ne cestu k souboru. Lokálně vede na `/api/photos/…` (soubory v `content/`), v produkci na URL z úložiště. Šablony ani brand se při přechodu nemění.
 - **Font je přibalený** (`public/fonts/Montserrat-VF.ttf`, žádné Google Fonts CDN). Export čeká na `document.fonts.ready` a ověří, že je načtený.
 
 ## Export

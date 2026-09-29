@@ -34,7 +34,7 @@ git lfs pull
 | **Node.js ≥ 20** (vyvíjeno na 24) jako trvale běžící proces | Next.js server + export. **Nestačí statický ani PHP hosting.** |
 | **Chromium pro Playwright** | `npx playwright install --with-deps chromium` (na Linuxu doinstaluje i systémové knihovny, ~150 MB) |
 | **RAM aspoň 2 GB** | Export A3 dekóduje fotku až 43 Mpx, Chromium zabere stovky MB |
-| **Zapisovatelný disk pro `storage/`** | Nahraná loga pořadatelů (viz „Co je potřeba doplnit“) |
+| **Žádný trvalý disk ani databáze** | Aplikace nic neukládá: fotky jsou v repozitáři, loga pořadatelů jen v prohlížeči |
 | Reverzní proxy (nginx apod.) | `client_max_body_size` ≥ 25 MB (upload loga), timeout ≥ 60 s (export), odpovědi až ~30 MB (PDF s originální fotkou) |
 
 Vhodné: VPS, Railway, Fly.io, Render apod. Serverless (Vercel) je možný jen s úpravou exportu na `@sparticuz/chromium`, a navíc naráží na limity velikosti odpovědi.
@@ -71,27 +71,24 @@ Varianta subdoména (`plakaty.prepistedejiny.cz`): build bez `NEXT_PUBLIC_BASE_P
 node scripts/audit-api.mjs https://prepistedejiny.cz/plakaty
 ```
 
-Test projde validace a všechny exporty (46 kontrol) a po sobě uklidí (nahraje a smaže 2 testovací loga). Očekávaný výsledek: `VÝSLEDEK API: 46 OK, 0 chyb`.
+Test projde validace a všechny exporty (48 kontrol). Nic na serveru nezůstane, protože se nic neukládá. Očekávaný výsledek: `VÝSLEDEK API: 48 OK, 0 chyb`.
 
 ## Data
 
 | Co | Kde | Poznámka |
 |---|---|---|
 | Knihovna fotek | `content/photos/` + `content/photos.json` | **Jen pro čtení**, součást repozitáře. Pořadatel fotky jen vybírá, API nahrávání ani mazání nemá. Mění se importem `scripts/import-photos.mjs` a novým nasazením. |
-| Loga pořadatelů | `storage/logos/` + `storage/logos.json` | Zapisuje aplikace, mimo git. **Na serveru musí být trvalý disk**, jinak se při redeployi ztratí. |
+| Loga pořadatelů | nikde | Neukládají se. `POST /api/logos` logo jen převede na bílou siluetu a vrátí ho, prohlížeč ho pošle s exportem. Po obnovení stránky zmizí (záměr). |
 | Font, logo PD | `public/fonts/`, `public/brand/` | Montserrat (SIL OFL) |
 
 Úložiště je za rozhraním `src/data/ports.ts` a implementace se volí jen v `src/data/index.ts`. Náhrada za databázi nebo objektové úložiště tedy nezasáhne šablony ani export.
 
 ## Co je potřeba doplnit před veřejným spuštěním
 
-1. **Ochrana API pro loga.** `POST/DELETE /api/logos` jsou teď veřejné. Na webu by kdokoli mohl mazat loga ostatních pořadatelů. Řešení:
-   - logo vázat na relaci nebo akci pořadatele, nebo
-   - loga neukládat vůbec (platí jen pro jeden plakát), nebo
-   - přidat přihlášení.
-2. **Omezení četnosti exportu** (rate limit). Export je náročný na CPU a paměť (Chromium).
-3. **Trvalé úložiště pro loga** (volume nebo objektové úložiště přes nový `PartnerLogoRepository`).
-4. **Volitelně** (návrh v [`DATA-MODEL.md`](DATA-MODEL.md), sekce „Budoucí fáze“): administrace akcí, unikátní odkazy pro pořadatele, přihlášení správce.
+Aplikace nic neukládá, takže na serveru nejsou žádná data k ochraně ani zálohování. Zbývá:
+
+1. **Omezení četnosti** (rate limit) na `POST /api/export` a `POST /api/logos`. Export je náročný na CPU a paměť (Chromium), převod loga zpracovává obrázek až 20 MB.
+2. **Volitelně** (návrh v [`DATA-MODEL.md`](DATA-MODEL.md), sekce „Budoucí fáze“): administrace akcí, unikátní odkazy pro pořadatele, přihlášení správce.
 
 ## Kde co je
 

@@ -48,7 +48,7 @@ Když je text moc dlouhý, formulář ukáže chybu a stažení se zablokuje. Š
 | Co | Kde |
 |---|---|
 | Knihovna fotek | `content/photos/` (originály beze změny) + `content/photos.json` (ČB/barva, výřez) — součást projektu |
-| Loga pořadatelů | `storage/logos/` + `storage/logos.json` (mimo git), uložená jako bílé siluety |
+| Loga pořadatelů | nikde, neukládají se (drží je jen otevřená stránka, po obnovení zmizí) |
 | Font | `public/fonts/Montserrat-VF.ttf` (SIL OFL) |
 | Logo | `public/brand/logo-pd-dark-bg.svg` |
 

@@ -28,6 +28,8 @@ export interface RenderImageOptions {
   scale: number;
   /** rozměr stránky pro PDF (jen tiskové formáty) */
   printSizeMm?: PrintSizeMm;
+  /** loga pořadatele (PNG), podstrčí se na adresách partnerLogoRenderUrl(i) */
+  partnerLogos?: Buffer[];
 }
 
 /** CSS px na mm (96 DPI), podle toho Chromium měří stránku PDF */
@@ -90,7 +92,15 @@ export function pdfRenderSize(
   };
 }
 
-export async function renderImage({ url, width, height, fileType, scale, printSizeMm }: RenderImageOptions): Promise<Buffer> {
+export async function renderImage({
+  url,
+  width,
+  height,
+  fileType,
+  scale,
+  printSizeMm,
+  partnerLogos = [],
+}: RenderImageOptions): Promise<Buffer> {
   const browser = await getBrowser();
   // width/height jsou CSS px plakátu (u PDF necelá čísla), okno musí být celé px
   const context = await browser.newContext({
@@ -99,6 +109,14 @@ export async function renderImage({ url, width, height, fileType, scale, printSi
   });
   try {
     const page = await context.newPage();
+    // Loga pořadatele nejsou na serveru uložená – požadavky na ně obslouží přímo z paměti
+    if (partnerLogos.length > 0) {
+      await page.route(/\/__partner-logo\/(\d+)\.png$/, (route) => {
+        const index = Number(/(\d+)\.png$/.exec(route.request().url())?.[1]);
+        const body = partnerLogos[index];
+        return body ? route.fulfill({ status: 200, contentType: 'image/png', body }) : route.fulfill({ status: 404 });
+      });
+    }
     const response = await page.goto(url, { waitUntil: 'load' });
     if (!response?.ok()) throw new Error(`Stránka /render vrátila ${response?.status()}`);
 

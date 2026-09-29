@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
-import { partnerLogoRepository } from '@/data';
+import { toWhiteSilhouette } from '@/export/logo-silhouette';
 
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 const ACCEPTED = ['image/png', 'image/svg+xml', 'image/jpeg', 'image/webp'];
 
-export async function GET() {
-  return NextResponse.json(await partnerLogoRepository.list());
-}
-
+/**
+ * Převede nahrané logo pořadatele na bílou siluetu a vrátí ho jako data URL.
+ * Nic se neukládá – logo si drží jen stránka pořadatele (po obnovení zmizí).
+ */
 export async function POST(request: Request) {
   const form = await request.formData();
   const file = form.get('file');
@@ -21,10 +21,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Nepodporovaný formát (${file.type}). Použijte PNG, SVG nebo JPG.` }, { status: 415 });
   }
   try {
-    const record = await partnerLogoRepository.create(Buffer.from(await file.arrayBuffer()), file.name);
-    return NextResponse.json(record, { status: 201 });
+    const logo = await toWhiteSilhouette(Buffer.from(await file.arrayBuffer()));
+    return NextResponse.json({
+      dataUrl: `data:image/png;base64,${logo.data.toString('base64')}`,
+      width: logo.width,
+      height: logo.height,
+    });
   } catch (err) {
-    console.error('Nahrání loga selhalo', err);
+    console.error('Převod loga selhal', err);
     return NextResponse.json({ error: 'Soubor se nepodařilo zpracovat jako logo.' }, { status: 422 });
   }
 }

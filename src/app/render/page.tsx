@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { decodeInput } from '@/domain/render-url';
-import { partnerLogoRepository, photoRepository } from '@/data';
-import { LOGO_URL, partnerLogoUrl, photoUrl } from '@/lib/paths';
+import { photoRepository } from '@/data';
+import { LOGO_URL, partnerLogoRenderUrl, photoUrl } from '@/lib/paths';
 import {
   BLEED_MM,
   CROP_MARK_LENGTH_MM,
@@ -31,9 +31,8 @@ export default async function RenderPage({ searchParams }: PageProps<'/render'>)
   const photo = await photoRepository.get(input.photoId);
   if (!photo) notFound();
 
-  const logoIds = input.partnerLogoIds ?? [];
-  const logos = await Promise.all(logoIds.map((id) => partnerLogoRepository.get(id)));
-  if (logos.some((l) => !l)) notFound();
+  // logos = počet log pořadatele; obrázky podstrčí export (nejsou uložené na serveru)
+  const logoCount = Math.min(2, Math.max(0, Number(params.logos) || 0));
 
   // w = šířka plakátu v CSS px pro PDF (stránka + přesah); šablona vše počítá z šířky
   const format = FORMATS[f as FormatId];
@@ -51,7 +50,7 @@ export default async function RenderPage({ searchParams }: PageProps<'/render'>)
       focalPoint={input.photoFocus ?? photo.focalPoint}
       photoZoom={input.photoZoom}
       logoUrl={LOGO_URL}
-      partnerLogoUrls={logoIds.map(partnerLogoUrl)}
+      partnerLogoUrls={Array.from({ length: logoCount }, (_, i) => partnerLogoRenderUrl(i))}
       bleed={bleed}
     />
   );

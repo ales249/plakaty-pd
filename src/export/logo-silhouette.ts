@@ -1,33 +1,14 @@
 import 'server-only';
-import { randomUUID } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 import sharp from 'sharp';
-import type { PartnerLogoRecord, PartnerLogoRepository } from '../ports';
 
-// Lokální úložiště: storage/logos/<id>.png + storage/logos.json
-const ROOT = path.join(process.cwd(), 'storage');
-const DIR = path.join(ROOT, 'logos');
-const INDEX = path.join(ROOT, 'logos.json');
+// Loga pořadatelů se NEUKLÁDAJÍ (rozhodnutí 2026-09-29): server logo jen převede na bílou
+// siluetu a vrátí ho prohlížeči; při exportu ho prohlížeč pošle zpátky s požadavkem.
 
-/** Delší strana uloženého loga; na plakátu má logo max. 260 × 70 u (ve 2× exportu 520 × 140 px) */
-const MAX_SIZE = 1600;
-
-async function readIndex(): Promise<PartnerLogoRecord[]> {
-  try {
-    return JSON.parse(await readFile(INDEX, 'utf8')) as PartnerLogoRecord[];
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return [];
-    throw err;
-  }
-}
-
-async function writeIndex(records: PartnerLogoRecord[]): Promise<void> {
-  await mkdir(ROOT, { recursive: true });
-  await writeFile(INDEX, JSON.stringify(records, null, 2) + '\n');
-}
-
-const filePath = (id: string) => path.join(DIR, `${id}.png`);
+/**
+ * Delší strana převedeného loga. Na plakátu má logo max. 260 × 70 u, tj. u A3 (3,248 px/u)
+ * nejvýš ~845 px, u 3:4 ve 2× 520 px → 1000 px stačí a data v požadavku zůstanou malá.
+ */
+const MAX_SIZE = 1000;
 
 /**
  * Převede logo na bílou siluetu (BRAND-RULES §7): všechny pixely bílé, tvar nese jen průhlednost.
@@ -105,46 +86,3 @@ export async function toWhiteSilhouette(file: Buffer): Promise<{ data: Buffer; w
     .toBuffer({ resolveWithObject: true });
   return { data: trimmed.data, width: trimmed.info.width, height: trimmed.info.height };
 }
-
-export const localPartnerLogoRepository: PartnerLogoRepository = {
-  async list() {
-    return (await readIndex()).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  },
-
-  async get(id) {
-    return (await readIndex()).find((l) => l.id === id) ?? null;
-  },
-
-  async create(file, originalName) {
-    await mkdir(DIR, { recursive: true });
-    const id = randomUUID();
-    const logo = await toWhiteSilhouette(file);
-    await writeFile(filePath(id), logo.data);
-    const record: PartnerLogoRecord = {
-      id,
-      originalName,
-      width: logo.width,
-      height: logo.height,
-      createdAt: new Date().toISOString(),
-    };
-    await writeIndex([...(await readIndex()), record]);
-    return record;
-  },
-
-  async delete(id) {
-    const records = await readIndex();
-    if (!records.some((l) => l.id === id)) return false;
-    await writeIndex(records.filter((l) => l.id !== id));
-    await rm(filePath(id), { force: true });
-    return true;
-  },
-
-  async read(id) {
-    if (!/^[0-9a-f-]{36}$/.test(id)) return null;
-    try {
-      return await readFile(filePath(id));
-    } catch {
-      return null;
-    }
-  },
-};

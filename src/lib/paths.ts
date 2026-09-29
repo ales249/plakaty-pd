@@ -13,8 +13,12 @@ export function photoUrl(id: string, variant: PhotoVariant): string {
   return withBase(`/api/photos/${encodeURIComponent(id)}?v=${variant}`);
 }
 
-export function partnerLogoUrl(id: string): string {
-  return withBase(`/api/logos/${encodeURIComponent(id)}`);
+/**
+ * Adresa loga pořadatele na interní stránce /render. Soubor neexistuje – export ho
+ * při vykreslení podstrčí z dat požadavku (Playwright page.route), nic se neukládá.
+ */
+export function partnerLogoRenderUrl(index: number): string {
+  return withBase(`/__partner-logo/${index}.png`);
 }
 
 export const LOGO_URL = withBase('/brand/logo-pd-dark-bg.svg');

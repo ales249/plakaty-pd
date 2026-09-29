@@ -1,8 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import sharp from 'sharp';
 import { BLEED_MM, exportScale, fileTypesFor, FORMATS, maxPhotoZoom, PRINT_SHEET_MARGIN_MM } from '@/domain/formats';
 import { renderRequestSchema } from '@/domain/poster-input';
 import { encodeInput } from '@/domain/render-url';
-import { partnerLogoRepository, photoRepository } from '@/data';
+import { photoRepository } from '@/data';
 import { setPrintBoxes } from '@/export/pdf-boxes';
 import { pdfRenderSize, renderImage } from '@/export/render-image';
 import { computeLayout } from '@/templates/event-classic/spec';
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: 'Neplatná data formuláře.', issues: parsed.error.issues }, { status: 400 });
   }
-  const { input, formatId, fileType, bleed } = parsed.data;
+  const { input, formatId, fileType, bleed, partnerLogos = [] } = parsed.data;
   const format = FORMATS[formatId];
   if (format.status !== 'ready') {
     return NextResponse.json({ error: `Formát ${format.label} zatím není hotový.` }, { status: 400 });
@@ -36,9 +37,11 @@ export async function POST(request: NextRequest) {
   if (!photo) {
     return NextResponse.json({ error: 'Vybraná fotka neexistuje.' }, { status: 400 });
   }
-  const logos = await Promise.all((input.partnerLogoIds ?? []).map((id) => partnerLogoRepository.get(id)));
-  if (logos.some((l) => !l)) {
-    return NextResponse.json({ error: 'Vybrané logo pořadatele neexistuje.' }, { status: 400 });
+  // Loga pořadatele z požadavku (neukládají se): musí to být skutečné PNG
+  const logoBuffers = partnerLogos.map((dataUrl) => Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64'));
+  const logoFormats = await Promise.all(logoBuffers.map((b) => sharp(b).metadata().then((m) => m.format).catch(() => null)));
+  if (logoFormats.some((f) => f !== 'png')) {
+    return NextResponse.json({ error: 'Logo pořadatele se nepodařilo načíst, nahrajte ho znovu.' }, { status: 400 });
   }
   const { errors, photoHeight } = computeLayout(input, format);
   // Přiblížení nesmí zhoršit kvalitu fotky ve zvoleném formátu (stejný strop jako ve formuláři)
@@ -54,6 +57,7 @@ export async function POST(request: NextRequest) {
   const url = new URL(withBase('/render'), process.env.RENDER_ORIGIN || request.nextUrl.origin);
   url.searchParams.set('d', encodeInput(input));
   url.searchParams.set('f', formatId);
+  if (logoBuffers.length > 0) url.searchParams.set('logos', String(logoBuffers.length));
   // PDF: plakát se vykreslí rovnou ve velikosti stránky (+ přesah), aby ji beze zbytku vyplnil
   const trimMm = format.print ? { width: format.print.widthMm, height: format.print.heightMm } : null;
   const withBleed = fileType === 'pdf' && bleed === true;
@@ -78,6 +82,7 @@ export async function POST(request: NextRequest) {
       fileType,
       scale: exportScale(format),
       printSizeMm: size?.pageMm,
+      partnerLogos: logoBuffers,
     });
     const output = withBleed && trimMm ? await setPrintBoxes(image, trimMm, BLEED_MM, PRINT_SHEET_MARGIN_MM) : image;
     const ext = { pdf: 'pdf', png: 'png', jpeg: 'jpg' }[fileType];

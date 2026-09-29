@@ -47,8 +47,6 @@ export const posterInputSchema = z.object({
     .trim()
     .max(DESCRIPTION_MAX_CHARS, `Popis akce může mít max. ${DESCRIPTION_MAX_CHARS} znaků`)
     .optional(),
-  /** Loga pořadatele (bílé siluety z knihovny), vlevo nahoře na fotce */
-  partnerLogoIds: z.array(z.string()).max(PARTNER_LOGOS_MAX).optional(),
   /**
    * Výřez fotky jen pro tento plakát (0–1). Bez něj platí výřez z knihovny.
    * Knihovnu nemění – pořadatel si jen posune, kterou část fotky plakát ukáže.
@@ -66,6 +64,14 @@ export const renderRequestSchema = z.object({
   fileType: z.enum(FILE_TYPES),
   /** spadávka 3 mm (jen PDF tiskových formátů) */
   bleed: z.boolean().optional(),
+  /**
+   * Loga pořadatele jako bílé siluety (PNG data URL z /api/logos). Neukládají se,
+   * posílá je prohlížeč s každým exportem.
+   */
+  partnerLogos: z
+    .array(z.string().max(4_000_000).regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/, 'Neplatné logo'))
+    .max(PARTNER_LOGOS_MAX)
+    .optional(),
 });
 
 export type RenderRequest = z.infer<typeof renderRequestSchema>;

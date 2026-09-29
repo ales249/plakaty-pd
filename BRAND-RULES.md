@@ -98,7 +98,8 @@ Jednotka **u** = px na plátně široké 1080 px. Hodnoty jsou v `src/brand/toke
 ### Loga pořadatele (rozhodnuto 2026-09-28)
 
 - Nepovinně **1–2 loga pořadatele**, **vlevo nahoře na fotce**: 80 u od levého i horního okraje (stejný okraj jako logo PD), mezera 40 u. Každé logo se vejde do rámečku **260 × 70 u** (poměr stran zůstává).
-- **Vždy bílá silueta.** Převod dělá aplikace při nahrání (`toWhiteSilhouette` v `src/data/local/partner-logo-repository.ts`):
+- **Neukládají se** (rozhodnutí 2026-09-29): logo si pořadatel nahraje pro svůj plakát, po obnovení stránky zmizí.
+- **Vždy bílá silueta.** Převod dělá aplikace při nahrání (`toWhiteSilhouette` v `src/export/logo-silhouette.ts`):
   - logo s průhledností: tvar zbělá, části výrazně odlišné od převládající barvy (nápis v barevném tvaru, text v rámečku) se vyříznou jako otvory,
   - logo bez průhlednosti (JPG): pozadí se odhadne z okrajů a odstraní.
 - Na světlé fotce mají bílá loga nižší kontrast. Pomůže výběr fotky nebo výřezu s tmavším horním rohem.

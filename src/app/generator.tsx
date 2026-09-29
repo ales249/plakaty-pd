@@ -22,10 +22,10 @@ import {
   VENUE_MAX_CHARS,
   type PosterInput,
 } from '@/domain/poster-input';
-import type { PartnerLogoRecord, PhotoRecord } from '@/data/ports';
-import { LOGO_URL, partnerLogoUrl, photoUrl, withBase } from '@/lib/paths';
+import type { PhotoRecord } from '@/data/ports';
+import { LOGO_URL, photoUrl, withBase } from '@/lib/paths';
 import { computeLayout, TEMPLATE_ID, wrapByChars, type LayoutField } from '@/templates/event-classic/spec';
-import { PartnerLogos } from './partner-logos';
+import { PartnerLogos, type PartnerLogo } from './partner-logos';
 import { PhotoFocus } from './photo-focus';
 import { PhotoLibrary } from './photo-library';
 import { PosterPreview } from './poster-preview';
@@ -73,12 +73,12 @@ const INITIAL: PosterInput = {
 
 interface GeneratorProps {
   initialPhotos: PhotoRecord[];
-  initialLogos: PartnerLogoRecord[];
 }
 
-export function Generator({ initialPhotos, initialLogos }: GeneratorProps) {
+export function Generator({ initialPhotos }: GeneratorProps) {
   const photos = initialPhotos;
-  const [logos, setLogos] = useState(initialLogos);
+  // Loga pořadatele jen v paměti stránky – po obnovení zmizí (záměrně se neukládají)
+  const [logos, setLogos] = useState<PartnerLogo[]>([]);
   const [input, setInput] = useState<PosterInput>({ ...INITIAL, photoId: initialPhotos[0]?.id ?? '' });
   // Chyby u pole se ukazují až po první úpravě, aby prázdný formulář nesvítil červeně
   const [touched, setTouched] = useState<ReadonlySet<TextField>>(new Set());
@@ -144,6 +144,7 @@ export function Generator({ initialPhotos, initialLogos }: GeneratorProps) {
           formatId,
           fileType,
           bleed: fileType === 'pdf' && bleed,
+          partnerLogos: logos.map((l) => l.dataUrl),
         }),
       });
       if (!res.ok) {
@@ -252,9 +253,7 @@ export function Generator({ initialPhotos, initialLogos }: GeneratorProps) {
         <Group title="Loga pořadatele (nepovinné)">
           <PartnerLogos
             logos={logos}
-            selectedIds={input.partnerLogoIds ?? []}
-            onSelectedChange={(ids) => setInput((prev) => ({ ...prev, partnerLogoIds: ids }))}
-            onLogosChange={setLogos}
+            onChange={setLogos}
           />
         </Group>
       </section>
@@ -292,7 +291,7 @@ export function Generator({ initialPhotos, initialLogos }: GeneratorProps) {
             focalPoint={input.photoFocus ?? photo?.focalPoint ?? { x: 0.5, y: 0.5 }}
             photoZoom={zoom}
             logoUrl={LOGO_URL}
-            partnerLogoUrls={(input.partnerLogoIds ?? []).map(partnerLogoUrl)}
+            partnerLogoUrls={logos.map((l) => l.dataUrl)}
           />
         </div>
 

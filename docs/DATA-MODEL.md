@@ -1,7 +1,7 @@
 # Datový model — v0.2
 
 Typy jsou v TypeScriptu. Implementují se jako zod schémata v `src/domain/` a odvodí se z nich TS typy.
-Lokálně se fotky ukládají do `storage/` (JSON + soubory), později do DB a objektového úložiště. Tvar dat se nemění.
+Knihovna fotek je v `content/` (součást projektu, jen pro čtení). Loga pořadatelů se neukládají vůbec. Na serveru tedy není žádná zapisovaná data.
 
 ## Formáty
 
@@ -29,7 +29,6 @@ interface PosterInput {
   date: string;                  // ISO "2026-06-04" → "4. června" + "středa" se dopočítá
   time: string;                  // "18:00" (HH:mm)
   description?: string;          // popis akce, max. 37 znaků/řádek, 3 řádky, 111 znaků
-  partnerLogoIds?: string[];     // max. 2 loga pořadatele z knihovny (bílé siluety)
   photoFocus?: { x: number; y: number }; // výřez jen pro tento plakát (0–1), jinak výchozí z knihovny
   photoZoom?: number;            // přiblížení 1–1,1; strop podle kvality fotky ve formátu (maxPhotoZoom)
 }
@@ -51,18 +50,9 @@ interface PhotoRecord {
 
 Knihovnu vytváří `scripts/import-photos.mjs`. V budoucnu ji může nahradit databáze, rozhraní `PhotoRepository` zůstane stejné.
 
-## Loga pořadatelů (implementováno: `src/data/ports.ts`)
+## Loga pořadatelů (neukládají se)
 
-```ts
-interface PartnerLogoRecord {
-  id: string;                    // UUID
-  originalName: string;
-  width: number; height: number; // uložená bílá silueta (PNG, max. 1600 px)
-  createdAt: string;
-}
-```
-
-Lokálně jsou v `storage/logos/` a `storage/logos.json`. V budoucnu budou patřit ke konkrétní akci nebo pořadateli.
+`POST /api/logos` logo převede na bílou siluetu a vrátí `{ dataUrl, width, height }` (PNG). Nic se neukládá, logo drží jen stránka pořadatele a po obnovení zmizí. Při exportu ho prohlížeč pošle v `RenderRequest.partnerLogos`.
 
 ## Šablona
 
@@ -87,6 +77,7 @@ interface RenderRequest {
   formatId: FormatId;
   fileType: 'pdf' | 'png' | 'jpeg'; // PDF jen A4/A3; JPEG kvalita 92
   bleed?: boolean;               // PDF pro tiskárnu: spadávka 3 mm + ořezové značky + TrimBox/BleedBox
+  partnerLogos?: string[];       // max. 2 loga pořadatele jako PNG data URL (z POST /api/logos)
 }
 ```
 

@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# lokální úložiště nahraných fotek
+# dřívější lokální úložiště (už se nepoužívá)
 /storage/
