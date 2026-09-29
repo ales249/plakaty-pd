@@ -6,7 +6,7 @@ Tenhle dokument je pro vývojáře, který bude generátor nasazovat. Popis apli
 
 Next.js 16 aplikace (React 19, TypeScript). Pořadatel akce vyplní formulář, vybere fotku ze schválené knihovny a stáhne plakát (PNG/JPEG, u A4/A3 i PDF). Výstup generuje **headless Chromium přes Playwright** na serveru: otevře interní stránku `/render` a pořídí screenshot nebo PDF.
 
-Stav: hotové formáty 3:4, A4, A3. Ověřeno automatickým testem (`scripts/audit-api.mjs`) v dev i produkčním buildu, i pod `/plakaty`.
+Stav: hotové formáty 3:4, A4, A3. Ověřeno automatickým testem (`scripts/audit-api.mjs`) v dev i produkčním buildu, i pod `/plakaty` z čistého klonu z GitHubu.
 
 ## Stažení projektu
 
@@ -17,6 +17,14 @@ git lfs install
 git clone <repozitář> plakaty-pd
 cd plakaty-pd
 git lfs ls-files        # má vypsat 11 fotek v content/photos/
+du -sh content/photos   # ~140 MB; pokud jen ~2 MB, jsou tam místo fotek LFS odkazy
+```
+
+**Naklonováno bez LFS?** Soubory v `content/photos/*.jpg` pak obsahují text `version https://git-lfs…` místo obrázku a export selže („obrázek se nenačetl“). Oprava v naklonované složce:
+
+```bash
+git lfs install
+git lfs pull
 ```
 
 ## Požadavky na server
@@ -33,20 +41,27 @@ Vhodné: VPS, Railway, Fly.io, Render apod. Serverless (Vercel) je možný jen s
 
 ## Build a spuštění
 
+`NEXT_PUBLIC_BASE_PATH` a `RENDER_ORIGIN` dejte do souboru **`.env.production`** v kořeni projektu (je v `.gitignore`). Next.js ho načte **při buildu i při spuštění**. `NEXT_PUBLIC_BASE_PATH` musí platit v obou krocích, jinak aplikace vrací 404. **`PORT` musí být skutečná proměnná prostředí** (hosting ji obvykle nastavuje sám), ze souboru `.env.production` se nepoužije.
+
 ```bash
+cat > .env.production <<'ENV'
+NEXT_PUBLIC_BASE_PATH=/plakaty
+RENDER_ORIGIN=http://127.0.0.1:3000
+ENV
+
 npm ci
 npx playwright install --with-deps chromium
-NEXT_PUBLIC_BASE_PATH=/plakaty npm run build
-PORT=3000 RENDER_ORIGIN=http://127.0.0.1:3000 npm start
+npm run build
+PORT=3000 npm start
 ```
 
 ### Proměnné prostředí
 
 | Proměnná | Kdy | Význam |
 |---|---|---|
-| `NEXT_PUBLIC_BASE_PATH` | **při buildu** | Podadresa webu, např. `/plakaty`. Bez ní běží aplikace v kořeni. Font, fotky, API i export ji respektují. |
+| `NEXT_PUBLIC_BASE_PATH` | **při buildu i spuštění** | Podadresa webu, např. `/plakaty`. Bez ní běží aplikace v kořeni. Font, fotky, API i export ji respektují. Když chybí při `npm start`, všechno vrací 404. |
 | `RENDER_ORIGIN` | za běhu | Interní adresa aplikace, kterou si export otevírá v Chromiu (např. `http://127.0.0.1:3000`). Za proxy **nastavit**, jinak Chromium chodí na veřejnou adresu požadavku. |
-| `PORT` | za běhu | Port serveru (výchozí 3100). |
+| `PORT` | za běhu, **jako proměnná prostředí** (ne v `.env.production`) | Port serveru (výchozí 3100). `RENDER_ORIGIN` musí ukazovat na stejný port. |
 
 Varianta subdoména (`plakaty.prepistedejiny.cz`): build bez `NEXT_PUBLIC_BASE_PATH`.
 
