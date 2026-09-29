@@ -8,6 +8,7 @@ import {
   fileTypesFor,
   FORMAT_IDS,
   FORMATS,
+  maxPhotoZoom,
   photoUpscale,
   type FileType,
   type FormatId,
@@ -90,7 +91,10 @@ export function Generator({ initialPhotos, initialLogos }: GeneratorProps) {
   const photo = photos.find((p) => p.id === input.photoId) ?? null;
   const layout = useMemo(() => computeLayout(input, format), [input, format]);
   // Varování, když fotka nemá dost pixelů pro zvolený formát (hlavně A3). 15 % zvětšení je v tisku nepoznatelné.
-  const upscale = photo ? photoUpscale(format, photo, layout.photoHeight) : 1;
+  // Přiblížení omezené kvalitou fotky ve zvoleném formátu (při přepnutí na A3 se případně sníží)
+  const maxZoom = photo ? maxPhotoZoom(format, photo, layout.photoHeight) : 1;
+  const zoom = Math.min(input.photoZoom ?? 1, maxZoom);
+  const upscale = photo ? photoUpscale(format, photo, layout.photoHeight, zoom) : 1;
   // Jen u tisku: na sítích je zvětšení menších fotek z knihovny (~25 %) nepoznatelné
   const lowResWarning =
     photo && format.print && upscale > 1.15
@@ -135,7 +139,12 @@ export function Generator({ initialPhotos, initialLogos }: GeneratorProps) {
       const res = await fetch(withBase('/api/export'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, formatId, fileType, bleed: fileType === 'pdf' && bleed }),
+        body: JSON.stringify({
+          input: { ...input, photoZoom: zoom > 1 ? zoom : undefined },
+          formatId,
+          fileType,
+          bleed: fileType === 'pdf' && bleed,
+        }),
       });
       if (!res.ok) {
         const data: { error?: string } = await res.json().catch(() => ({}));
@@ -219,7 +228,7 @@ export function Generator({ initialPhotos, initialLogos }: GeneratorProps) {
           <PhotoLibrary
             photos={photos}
             selectedId={input.photoId}
-            onSelect={(id) => setInput((prev) => ({ ...prev, photoId: id, photoFocus: undefined }))}
+            onSelect={(id) => setInput((prev) => ({ ...prev, photoId: id, photoFocus: undefined, photoZoom: undefined }))}
           />
           {errors.photoId && <p className="text-sm text-red-700">{errors.photoId}</p>}
           {photo && (
@@ -228,6 +237,14 @@ export function Generator({ initialPhotos, initialLogos }: GeneratorProps) {
               focus={input.photoFocus}
               onChange={(photoFocus) => setInput((prev) => ({ ...prev, photoFocus }))}
               area={{ width: layout.width, height: layout.photoHeight }}
+              zoom={zoom}
+              maxZoom={maxZoom}
+              onZoomChange={(photoZoom) => setInput((prev) => ({ ...prev, photoZoom: photoZoom > 1 ? photoZoom : undefined }))}
+              zoomDisabledNote={
+                format.print
+                  ? `Tuhle fotku pro ${format.label} přiblížit nejde, má na tisk nižší rozlišení.`
+                  : 'Tuhle fotku přiblížit nejde, má nižší rozlišení.'
+              }
             />
           )}
         </Group>
@@ -271,7 +288,9 @@ export function Generator({ initialPhotos, initialLogos }: GeneratorProps) {
             heightPx={format.heightPx}
             layout={layout}
             photoUrl={photo ? photoUrl(photo.id, 'preview') : null}
+            photoSize={photo ? { width: photo.width, height: photo.height } : null}
             focalPoint={input.photoFocus ?? photo?.focalPoint ?? { x: 0.5, y: 0.5 }}
+            photoZoom={zoom}
             logoUrl={LOGO_URL}
             partnerLogoUrls={(input.partnerLogoIds ?? []).map(partnerLogoUrl)}
           />

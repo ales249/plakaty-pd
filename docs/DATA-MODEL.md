@@ -31,6 +31,7 @@ interface PosterInput {
   description?: string;          // popis akce, max. 37 znaků/řádek, 3 řádky, 111 znaků
   partnerLogoIds?: string[];     // max. 2 loga pořadatele z knihovny (bílé siluety)
   photoFocus?: { x: number; y: number }; // výřez jen pro tento plakát (0–1), jinak výchozí z knihovny
+  photoZoom?: number;            // přiblížení 1–1,1; strop podle kvality fotky ve formátu (maxPhotoZoom)
 }
 ```
 

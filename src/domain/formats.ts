@@ -39,11 +39,28 @@ export function photoUpscale(
   format: Format,
   photo: { width: number; height: number },
   photoAreaHeightU: number,
+  zoom = 1,
 ): number {
   const scale = exportScale(format) * (format.widthPx / 1080);
   const areaW = 1080 * scale;
   const areaH = photoAreaHeightU * scale;
-  return Math.max(areaW / photo.width, areaH / photo.height);
+  return Math.max(areaW / photo.width, areaH / photo.height) * zoom;
+}
+
+/** Nejvyšší přiblížení fotky vůbec: 110 % (pořadatel smí jen mírně, rozhodnutí 2026-09-29) */
+export const PHOTO_ZOOM_MAX = 1.1;
+/** Kolikrát smí být fotka ve výstupu zvětšená proti svému rozlišení: tisk přísněji než sítě */
+const MAX_UPSCALE = { print: 1.15, screen: 1.5 };
+
+/**
+ * Nejvyšší přiblížení, které daná fotka v daném formátu snese bez ztráty kvality:
+ * zvětšení fotky proti jejímu skutečnému rozlišení nesmí překročit MAX_UPSCALE.
+ * Menší fotka, která je už bez přiblížení na hraně, vrátí 1 (přiblížit nejde).
+ */
+export function maxPhotoZoom(format: Format, photo: { width: number; height: number }, photoAreaHeightU: number): number {
+  const limit = format.print ? MAX_UPSCALE.print : MAX_UPSCALE.screen;
+  const base = photoUpscale(format, photo, photoAreaHeightU);
+  return Math.min(PHOTO_ZOOM_MAX, Math.max(1, limit / base));
 }
 
 /** Nabízené typy souborů: tiskové formáty i PDF (vektorový text, přesný rozměr v mm), ostatní jen obrázky. */

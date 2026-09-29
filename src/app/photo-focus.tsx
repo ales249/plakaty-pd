@@ -11,6 +11,12 @@ interface PhotoFocusProps {
   onChange: (focus: FocalPoint | undefined) => void;
   /** oblast fotky na plakátu v u (šířka 1080 × výška) – určuje, jaká část fotky je vidět */
   area: { width: number; height: number };
+  /** přiblížení pro tento plakát (1 = bez) a strop podle kvality fotky ve zvoleném formátu */
+  zoom: number;
+  maxZoom: number;
+  onZoomChange: (zoom: number) => void;
+  /** vysvětlení, když přiblížit nejde */
+  zoomDisabledNote: string;
 }
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
@@ -20,11 +26,11 @@ const round = (v: number) => Math.round(v * 1000) / 1000;
  * Výřez fotky pro jeden plakát. Ukazuje, která část fotky bude na plakátu vidět
  * (object-fit: cover), kliknutím se rámeček vycentruje na zvolené místo. Knihovnu nemění.
  */
-export function PhotoFocus({ photo, focus, onChange, area }: PhotoFocusProps) {
+export function PhotoFocus({ photo, focus, onChange, area, zoom, maxZoom, onZoomChange, zoomDisabledNote }: PhotoFocusProps) {
   const current = focus ?? photo.focalPoint;
 
-  // cover: fotka se zvětší tak, aby oblast vyplnila; vidět je jen část o velikosti vis
-  const scale = Math.max(area.width / photo.width, area.height / photo.height);
+  // cover: fotka se zvětší tak, aby oblast vyplnila (× přiblížení); vidět je jen část o velikosti vis
+  const scale = Math.max(area.width / photo.width, area.height / photo.height) * zoom;
   const vis = { w: Math.min(1, area.width / (scale * photo.width)), h: Math.min(1, area.height / (scale * photo.height)) };
   // object-position: levý okraj viditelné části = (1 − vis) × focal
   const frame = { left: (1 - vis.w) * current.x, top: (1 - vis.h) * current.y };
@@ -54,6 +60,25 @@ export function PhotoFocus({ photo, focus, onChange, area }: PhotoFocusProps) {
           style={{ left: pct(frame.left), top: pct(frame.top), width: pct(vis.w), height: pct(vis.h) }}
         />
       </div>
+      <label className="block space-y-1">
+        <span className="flex items-center justify-between text-sm font-semibold">
+          <span>Přiblížení</span>
+          <span className="tabular-nums text-neutral-500">{Math.round(zoom * 100)} %</span>
+        </span>
+        <input
+          type="range"
+          min={100}
+          max={Math.round(maxZoom * 100)}
+          step={1}
+          value={Math.round(zoom * 100)}
+          disabled={maxZoom <= 1}
+          onChange={(e) => onZoomChange(Number(e.target.value) / 100)}
+          className="w-full accent-black disabled:opacity-40"
+        />
+        <span className="block text-xs text-neutral-500">
+          {maxZoom <= 1 ? zoomDisabledNote : `Max. ${Math.round(maxZoom * 100)} %, aby fotka neztratila kvalitu.`}
+        </span>
+      </label>
       <div className="flex gap-2">
         <button
           type="button"
@@ -64,8 +89,11 @@ export function PhotoFocus({ photo, focus, onChange, area }: PhotoFocusProps) {
         </button>
         <button
           type="button"
-          onClick={() => onChange(undefined)}
-          disabled={!focus}
+          onClick={() => {
+            onChange(undefined);
+            onZoomChange(1);
+          }}
+          disabled={!focus && zoom <= 1}
           className="rounded-md border border-neutral-300 bg-white px-3 py-1.5 text-sm font-semibold hover:border-black disabled:opacity-40 disabled:hover:border-neutral-300"
         >
           Výchozí výřez

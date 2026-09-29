@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { BLEED_MM, exportScale, fileTypesFor, FORMATS, PRINT_SHEET_MARGIN_MM } from '@/domain/formats';
+import { BLEED_MM, exportScale, fileTypesFor, FORMATS, maxPhotoZoom, PRINT_SHEET_MARGIN_MM } from '@/domain/formats';
 import { renderRequestSchema } from '@/domain/poster-input';
 import { encodeInput } from '@/domain/render-url';
 import { partnerLogoRepository, photoRepository } from '@/data';
@@ -32,19 +32,26 @@ export async function POST(request: NextRequest) {
   if (!fileTypesFor(format).includes(fileType)) {
     return NextResponse.json({ error: `Formát ${format.label} nejde stáhnout jako ${fileType.toUpperCase()}.` }, { status: 400 });
   }
-  if (!(await photoRepository.get(input.photoId))) {
+  const photo = await photoRepository.get(input.photoId);
+  if (!photo) {
     return NextResponse.json({ error: 'Vybraná fotka neexistuje.' }, { status: 400 });
   }
   const logos = await Promise.all((input.partnerLogoIds ?? []).map((id) => partnerLogoRepository.get(id)));
   if (logos.some((l) => !l)) {
     return NextResponse.json({ error: 'Vybrané logo pořadatele neexistuje.' }, { status: 400 });
   }
-  const { errors } = computeLayout(input, format);
+  const { errors, photoHeight } = computeLayout(input, format);
+  // Přiblížení nesmí zhoršit kvalitu fotky ve zvoleném formátu (stejný strop jako ve formuláři)
+  if ((input.photoZoom ?? 1) > maxPhotoZoom(format, photo, photoHeight) + 0.005) {
+    return NextResponse.json({ error: 'Fotka je pro tento formát přiblížená víc, než snese její rozlišení.' }, { status: 422 });
+  }
   if (errors.length > 0) {
     return NextResponse.json({ error: errors.map((e) => e.message).join(' ') }, { status: 422 });
   }
 
-  const url = new URL(withBase('/render'), request.nextUrl.origin);
+  // Export si otevírá /render v Chromiu na serveru. Za reverzní proxy nastavte RENDER_ORIGIN
+  // na interní adresu aplikace (např. http://127.0.0.1:3000), jinak se použije adresa požadavku.
+  const url = new URL(withBase('/render'), process.env.RENDER_ORIGIN || request.nextUrl.origin);
   url.searchParams.set('d', encodeInput(input));
   url.searchParams.set('f', formatId);
   // PDF: plakát se vykreslí rovnou ve velikosti stránky (+ přesah), aby ji beze zbytku vyplnil

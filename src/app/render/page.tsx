@@ -47,7 +47,9 @@ export default async function RenderPage({ searchParams }: PageProps<'/render'>)
     <Poster
       layout={layout}
       photoUrl={photoUrl(photo.id, 'full')}
+      photoSize={{ width: photo.width, height: photo.height }}
       focalPoint={input.photoFocus ?? photo.focalPoint}
+      photoZoom={input.photoZoom}
       logoUrl={LOGO_URL}
       partnerLogoUrls={logoIds.map(partnerLogoUrl)}
       bleed={bleed}

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { FILE_TYPES, FORMAT_IDS } from './formats';
+import { FILE_TYPES, FORMAT_IDS, PHOTO_ZOOM_MAX } from './formats';
 
 /** Max. délka města v nadpisu včetně mezer, bez „!“ (BRAND-RULES §8) */
 export const CITY_HEADLINE_MAX_CHARS = 23;
@@ -54,6 +54,8 @@ export const posterInputSchema = z.object({
    * Knihovnu nemění – pořadatel si jen posune, kterou část fotky plakát ukáže.
    */
   photoFocus: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).optional(),
+  /** Přiblížení fotky jen pro tento plakát (1 = bez přiblížení); strop podle kvality viz maxPhotoZoom */
+  photoZoom: z.number().min(1).max(PHOTO_ZOOM_MAX).optional(),
 });
 
 export type PosterInput = z.infer<typeof posterInputSchema>;

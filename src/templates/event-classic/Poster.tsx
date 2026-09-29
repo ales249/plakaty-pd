@@ -8,7 +8,11 @@ import { geometry, type EventLayout, type TextBlock } from './spec';
 export interface PosterProps {
   layout: EventLayout;
   photoUrl: string | null;
+  /** skutečné rozměry fotky (px) – z nich se počítá výřez a přiblížení */
+  photoSize: { width: number; height: number } | null;
   focalPoint: { x: number; y: number };
+  /** přiblížení fotky (1 = fotka právě vyplní oblast) */
+  photoZoom?: number;
   logoUrl: string;
   /** loga pořadatele (bílé siluety), max. 2 */
   partnerLogoUrls?: string[];
@@ -19,7 +23,16 @@ export interface PosterProps {
   bleed?: number;
 }
 
-export function Poster({ layout, photoUrl, focalPoint, logoUrl, partnerLogoUrls = [], bleed = 0 }: PosterProps) {
+export function Poster({
+  layout,
+  photoUrl,
+  photoSize,
+  focalPoint,
+  photoZoom = 1,
+  logoUrl,
+  partnerLogoUrls = [],
+  bleed = 0,
+}: PosterProps) {
   const px = (u: number) => u * layout.s;
   // Tracking v px pro každý prvek zvlášť: em na kořeni by se přepočítalo z kořenové velikosti písma
   const tracking = (size: number) => `${px(size * font.trackingEm)}px`;
@@ -81,6 +94,14 @@ export function Poster({ layout, photoUrl, focalPoint, logoUrl, partnerLogoUrls 
   const photoEdgeLeft = edgeAt(-bleed) + bleed;
   const photoEdgeRight = edgeAt(layout.width + bleed) + bleed;
 
+  // Fotka vyplní oblast (jako object-fit: cover), zvětšená o přiblížení; poloha podle ohniska
+  // (jako object-position): volné místo (oblast − fotka) se rozdělí v poměru ohniska.
+  const box = { width: layout.width + 2 * bleed, height: Math.max(photoEdgeLeft, photoEdgeRight) };
+  const cover = photoSize ? Math.max(box.width / photoSize.width, box.height / photoSize.height) * photoZoom : 1;
+  const img = photoSize ? { width: photoSize.width * cover, height: photoSize.height * cover } : box;
+  const imgLeft = (box.width - img.width) * focalPoint.x;
+  const imgTop = (box.height - img.height) * focalPoint.y;
+
   return (
     <div style={root} data-poster>
       {/* čistý formát (ořez); u spadávky posunutý o spadávku dovnitř */}
@@ -91,8 +112,8 @@ export function Poster({ layout, photoUrl, focalPoint, logoUrl, partnerLogoUrls 
               position: 'absolute',
               left: -px(bleed),
               top: -px(bleed),
-              width: px(layout.width + 2 * bleed),
-              height: px(Math.max(photoEdgeLeft, photoEdgeRight)),
+              width: px(box.width),
+              height: px(box.height),
               overflow: 'hidden',
               // Hrana fotky – ořez polygonem od levého k pravému bodu hrany
               clipPath: `polygon(0 0, 100% 0, 100% ${px(photoEdgeRight)}px, 0 ${px(photoEdgeLeft)}px)`,
@@ -103,10 +124,12 @@ export function Poster({ layout, photoUrl, focalPoint, logoUrl, partnerLogoUrls 
               src={photoUrl}
               alt=""
               style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                objectPosition: `${focalPoint.x * 100}% ${focalPoint.y * 100}%`,
+                position: 'absolute',
+                left: px(imgLeft),
+                top: px(imgTop),
+                width: px(img.width),
+                height: px(img.height),
+                maxWidth: 'none',
                 display: 'block',
               }}
             />

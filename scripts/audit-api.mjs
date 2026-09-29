@@ -62,6 +62,10 @@ await bad('neexistující fotka odmítnuta', { photoId: 'neni' });
 await bad('prázdné místo konání odmítnuto', { venue: '' });
 await bad('neplatný výřez fotky odmítnut', { photoFocus: { x: 2, y: 0 } });
 ok((await post('/api/export', { formatId: 'poster-3x4', fileType: 'jpeg', input: { ...input, photoFocus: { x: 0, y: 0.5 } } })).status === 200, 'vlastní výřez fotky pro plakát');
+ok((await post('/api/export', { formatId: 'poster-3x4', fileType: 'jpeg', input: { ...input, photoZoom: 1.1 } })).status === 200, 'přiblížení 110 %');
+await bad('přiblížení nad 110 % odmítnuto', { photoZoom: 1.2 });
+const small = photos.find((p) => p.width <= 2400);
+if (small) ok((await post('/api/export', { formatId: 'a3', fileType: 'png', input: { ...input, photoId: small.id, photoZoom: 1.05 } })).status === 422, 'přiblížení malé fotky pro A3 odmítnuto (kvalita)');
 ok((await post('/api/export', { formatId: 'poster-3x4', fileType: 'pdf', input })).status === 400, 'PDF u 3:4 odmítnuto');
 
 console.log('— exporty');

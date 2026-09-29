@@ -1,14 +1,6 @@
 @import "tailwindcss";
 
-/* Brand font (BRAND-RULES §2). Soubor je přibalený v projektu, žádné CDN.
-   Při nasazení pod basePath je potřeba upravit URL. */
-@font-face {
-  font-family: 'PD Montserrat';
-  src: url('/fonts/Montserrat-VF.ttf') format('truetype');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: block;
-}
+/* Brand font (BRAND-RULES §2) se načítá v src/app/layout.tsx – URL musí respektovat basePath. */
 
 @theme {
   --font-sans: 'PD Montserrat', ui-sans-serif, system-ui, sans-serif;

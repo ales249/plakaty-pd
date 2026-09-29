@@ -37,7 +37,7 @@ Stejně jako spuštění: `cd ~/plakaty-pd && npm run dev` a otevřít http://lo
 
 ## Jak to používat
 
-1. **Vyber fotku** ze schválené knihovny (ČB nebo barva). Kliknutím do velkého náhledu posuneš výřez pro svůj plakát (světlý rámeček = co bude vidět), „Vycentrovat“ / „Výchozí výřez“ ho vrátí. Nahrávat ani mazat fotky nejde, knihovnu mění jen správce (viz níže).
+1. **Vyber fotku** ze schválené knihovny (ČB nebo barva). Kliknutím do velkého náhledu posuneš výřez pro svůj plakát (světlý rámeček = co bude vidět), posuvníkem ji mírně přiblížíš (max. 110 %, u tisku podle rozlišení fotky), „Vycentrovat“ / „Výchozí výřez“ vrátí výchozí stav. Nahrávat ani mazat fotky nejde, knihovnu mění jen správce (viz níže).
 2. Vyplň údaje o akci. „Město v nadpisu“ piš rovnou ve tvaru za „Přepište dějiny“ (např. „v Náchodě“, „ve Zlíně“). Nepovinně přidej popis akce a 1–2 loga pořadatele.
 3. Vpravo je živý náhled. Vyber formát (3:4, A4, A3) a stáhni **PNG / JPEG**. U A4 a A3 je navíc **PDF**; zaškrtnutím „PDF pro tiskárnu“ dostaneš arch se spadávkou 3 mm a ořezovými značkami.
 
@@ -69,6 +69,7 @@ Knihovna se nahradí fotkami ze složky (originály se zkopírují beze změny).
 | [docs/DATA-MODEL.md](docs/DATA-MODEL.md) | Datové typy |
 | [docs/EXPORT-SPIKE.md](docs/EXPORT-SPIKE.md) | Jak je ověřena věrnost exportu |
 | [docs/OPEN-QUESTIONS.md](docs/OPEN-QUESTIONS.md) | Otevřené a rozhodnuté otázky |
+| [docs/PREDANI-WEB.md](docs/PREDANI-WEB.md) | **Pro vývojáře:** nasazení na web, požadavky na server, co doplnit |
 
 ## Pro vývoj
 

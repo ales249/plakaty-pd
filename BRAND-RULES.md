@@ -87,6 +87,7 @@ Jednotka **u** = px na plátně široké 1080 px. Hodnoty jsou v `src/brand/toke
 - Dopočítává se v `computeLayout` ze stejných rozměrů, kterými renderer skládá textový blok.
 - Výchozí výřez určuje **ohnisko** (`focalPoint`) u fotky v `content/photos.json` (výchozí x 0,5 / y 0,35; fotky u cihlové zdi x 0,42). U 3:4 i A4/A3 je fotka vidět na výšku celá, rozhoduje vodorovný střed.
 - **Pořadatel si může výřez posunout jen pro svůj plakát** (`photoFocus`): kliknutím do fotky, tlačítky „Vycentrovat“ a „Výchozí výřez“. Světlý rámeček ukazuje, co bude na plakátu vidět pro zvolený formát. Knihovna se tím nemění.
+- **Přiblížení** (`photoZoom`) jen pro plakát, **nejvýš 110 %** (rozhodnutí 2026-09-29). Navíc strop podle kvality: fotka se ve výstupu nesmí zvětšit víc než 1,15× (tisk) / 1,5× (sítě) proti svému rozlišení (`maxPhotoZoom`). Tři menší fotky (2400 px) pro A4/A3 přiblížit nejde. Kontroluje formulář i server.
 
 ## 7. Logo — PLATÍ
 
