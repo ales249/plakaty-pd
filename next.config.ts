@@ -1,7 +1,8 @@
-import type { NextConfig } from "next";
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Indikátor dev režimu by se jinak vyfotil do exportu
+  devIndicators: false,
 };
 
 export default nextConfig;
